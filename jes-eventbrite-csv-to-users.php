@@ -13,7 +13,7 @@ function custom_url_handler() {
 	$group_ticket = false;
 	$logs = '';
 
-	if ($_SERVER["REQUEST_URI"] == '/artkai-abs/eventbrite_csv_to_users') {
+	if ($_SERVER["REQUEST_URI"] == 'eventbrite_csv_to_users') {
 		if (current_user_can('administrator')) {	// if is admin
 			$array = $fields = array();
 			$i = 0;
