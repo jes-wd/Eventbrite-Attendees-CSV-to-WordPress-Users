@@ -13,43 +13,43 @@ function custom_url_handler() {
 	$group_ticket = false;
 	$logs = '';
 
-	if($_SERVER["REQUEST_URI"] == '/artkai-abs/eventbrite_csv_to_users') { 
-		if(current_user_can('administrator')) {	// if is admin
-			$array = $fields = array(); 
+	if ($_SERVER["REQUEST_URI"] == '/artkai-abs/eventbrite_csv_to_users') {
+		if (current_user_can('administrator')) {	// if is admin
+			$array = $fields = array();
 			$i = 0;
-			$handle = @fopen(plugin_dir_path( __FILE__ ) . 'csv/new_users.csv', 'r'); // open the file
+			$handle = @fopen(plugin_dir_path(__FILE__) . 'csv/new_users.csv', 'r'); // open the file
 			if ($handle) {
-					while (($row = fgetcsv($handle, 4096)) !== false) { // create associative array from csv
-							if (empty($fields)) {
-									$fields = $row;
-									continue;
-							}
-							foreach ($row as $k=>$value) {
-									$array[$i][$fields[$k]] = $value;
-							}
-							$i++;
+				while (($row = fgetcsv($handle, 4096)) !== false) { // create associative array from csv
+					if (empty($fields)) {
+						$fields = $row;
+						continue;
 					}
-					if (!feof($handle)) {
-							echo "Error: unexpected fgets() fail\n";
+					foreach ($row as $k => $value) {
+						$array[$i][$fields[$k]] = $value;
 					}
-					fclose($handle);
+					$i++;
+				}
+				if (!feof($handle)) {
+					echo "Error: unexpected fgets() fail\n";
+				}
+				fclose($handle);
 			} else {
 				echo "Error: The file cannot be found. Add a file called 'new_users.csv' to the 'csv' folder of this plugin.";
 			}
 			// now create the users!
 			if (sizeof($array) > 0) {
 				$i = 0;
-				foreach($array as $item) {
+				foreach ($array as $item) {
 					$i++;
-					$password = wp_generate_password( 25, false );
+					$password = wp_generate_password(25, false);
 
-					if( $group_ticket == false ) {
+					if ($group_ticket == false) {
 						$user_login = username_exists($item['Email']) ? $item['Email'] . $i : $item['Email'];
-					} elseif( $group_ticket == true ) {
+					} elseif ($group_ticket == true) {
 						$user_login = $item['Username'];
 					}
 
-          $userdata = array(
+					$userdata = array(
 						'user_login' 						=> $user_login,
 						'display_name'          => $item['First Name'] . ' ' . $item['Last Name'],
 						'first_name'            => $item['First Name'],
@@ -57,23 +57,23 @@ function custom_url_handler() {
 						'user_email'            => $user_login,
 						'user_pass'  						=> $password,
 					);
-				
-					$user_id = wp_insert_user( $userdata ) ;
-				
+
+					$user_id = wp_insert_user($userdata);
+
 					// On success.
-					if ( ! is_wp_error( $user_id ) ) {
+					if (!is_wp_error($user_id)) {
 						// set role to user
-						wp_update_user( array ('ID' => $user_id, 'role' => 'um_user') ) ;
+						wp_update_user(array('ID' => $user_id, 'role' => 'um_user'));
 						// update acf field associated with ticket type
 						update_field('register_plan', $item['Ticket Type'], 'user_' . $user_id);
-						if($group_ticket == false) {
+						if ($group_ticket == false) {
 							// output confirmation
-							echo "index " . $i . " - User created : ". $user_id . " - " . $user_login . " - " . $password . "<br>";
-							$logs .= "index " . $i . " - User created : ". $user_id . " - " . $user_login . " - " . $password . "\r\n";
+							echo "index " . $i . " - User created : " . $user_id . " - " . $user_login . " - " . $password . "<br>";
+							$logs .= "index " . $i . " - User created : " . $user_id . " - " . $user_login . " - " . $password . "\r\n";
 							$to = $item['Email'];
 							$subject = '[Asia Blockchain Summit 2020] Login Details';
 							$body = '';
-							if ( $item['Ticket Type'] == 'moon_pass' || $item['Ticket Type'] == 'mars_pass' ) {
+							if ($item['Ticket Type'] == 'moon_pass' || $item['Ticket Type'] == 'mars_pass') {
 								$body = "
 									Hi " . $item['First Name'] . ", <br><br>
 									Username: " . $user_login . " <br><br>
@@ -95,33 +95,30 @@ function custom_url_handler() {
 									Feel free to write to us your thoughts on ABS2020 platform :)
 								";
 							}
-							
+
 							$headers = array('Content-Type: text/html; charset=UTF-8');
-              wp_mail( $to, $subject, $body, $headers );
-              // sleep to prevent overload of smtp server
-              // usleep(90000);
-						} elseif ( $group_ticket == true ) {
+							wp_mail($to, $subject, $body, $headers);
+							// sleep to prevent overload of smtp server
+							// usleep(90000);
+						} elseif ($group_ticket == true) {
 							echo "Username: " . $user_login . " <br><br>";
 							echo "Password: " . $password . " <br><br><br>";
 							$logs .= "Username: " . $user_login . "\r\n Password: " . $password . " \r\n";
 						}
+					} else {
+						echo $user_login . " Error: " . array_key_first($user_id->errors) . "<br><br>" . $user_id->errors[$error_code][0];
+						$logs .= $user_login . " Error: " . array_key_first($user_id->errors) . "\r\n" . $user_id->errors[$error_code][0];
 					}
-					else { 
-						echo $user_login . " Error: " . array_key_first( $user_id->errors ) . "<br><br>" . $user_id->errors[$error_code][0];
-						$logs .= $user_login . " Error: " . array_key_first( $user_id->errors ) . "\r\n" . $user_id->errors[$error_code][0];
-					}
-					  
 				}
 			}
 
-			$fp = fopen(plugin_dir_path( __FILE__ ) . 'logs.txt', 'a');//opens file in append mode
+			$fp = fopen(plugin_dir_path(__FILE__) . 'logs.txt', 'a'); //opens file in append mode
 			fwrite($fp, $logs);
-			fclose($fp);   
-	 
-			$date = new DateTime();
-			@rename(plugin_dir_path( __FILE__ ) . 'csv/new_users.csv', plugin_dir_path( __FILE__ ) . 'csv/x_new_users-' . $date->getTimestamp() . '.csv');
-			exit();
+			fclose($fp);
 
+			$date = new DateTime();
+			@rename(plugin_dir_path(__FILE__) . 'csv/new_users.csv', plugin_dir_path(__FILE__) . 'csv/x_new_users-' . $date->getTimestamp() . '.csv');
+			exit();
 		} else {
 			echo 'This page is allowed for admins only.';
 		}
@@ -168,6 +165,3 @@ add_action('parse_request', 'custom_url_handler');
 // 		}
 // 	}
 // }
-
-
-
